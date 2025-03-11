@@ -20,7 +20,7 @@
         - **ODS (Operational Data Store)**:
             - Data sources:
                 - CUM: https://www.cs.cmu.edu/~ark/personas/
-                - IMDB: https://developer.imdb.com/non - commercial - datasets/
+                - IMDB: https://developer.imdb.com/non-commercial-datasets/
                 - https://grouplens.org/datasets/movielens/
                 - Dataset from Kaggle: https://www.kaggle.com/code/ibtesama/getting - started - with - a - movie - recommendation - system/input
                 - Actors and movies: https://www.kaggle.com/code/mpwolke/imdb - films - by - actor
