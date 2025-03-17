@@ -1,9 +1,9 @@
 # report_501
 
 ### Goals
-- Complete an IEEE report.
-- Ask the teacher: Do we need to implement all the code?
-- Ask the teacher: Do we need to prepare a presentation for the IEEE report?
+- Complete an IEEE report.(4800-6000 words)
+- Ask the teacher: Do we need to implement all the code? Yes
+- Ask the teacher: Do we need to prepare a presentation for the IEEE report? Yes
 
 ### Task
 #### Main body of the report:
@@ -21,7 +21,7 @@
             - Data sources:
                 - CUM: https://www.cs.cmu.edu/~ark/personas/
                 - IMDB: https://developer.imdb.com/non-commercial-datasets/
-                - https://grouplens.org/datasets/movielens/
+                - Grouplens: https://grouplens.org/datasets/movielens/
                 - Dataset from Kaggle: https://www.kaggle.com/code/ibtesama/getting-started-with-a-movie-recommendation-system/input
                 - Actors and movies: https://www.kaggle.com/code/mpwolke/imdb-films-by-actor
         - **DWD (Data Warehouse Detail)**: Aggregate data from different sources to form the following subjects:
