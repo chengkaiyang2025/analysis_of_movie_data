@@ -55,9 +55,60 @@ In enterprise-level data warehouses or data platforms, data collection is signif
 
 ### Data Preprocessing and Cleaning  
 
-We can clean the data using the following SQL queries:  
+We can clean the data using the following SQL queries:
+```sql
 
-## 4. MySQL-Based Data Analysis  
+create table dwd.movies as
+select
+    m.movieId,
+    m.title as uncleaned_title,
+    case when m.title REGEXP '\\([0-9]{4}\\)$'
+        then trim(replace(m.title,RIGHT(m.title, 6),''))
+    else m.title
+        end as cleaned_title,
+    case when m.title REGEXP '\\([0-9]{4}\\)$'
+        then replace(replace(RIGHT(m.title, 6),'(',''),')','')
+        else '-1'
+        end as year
+from ods.ods_grouplens_movies m
+```
+
+
+```sql
+
+
+create table dwd.movies_genres
+SELECT
+    a.movieId,
+    substring_index(substring_index(a.genres,'_',b.help_topic_id + 1    ),    '|' ,- 1    ) AS ID
+from
+(select
+    m.movieId,
+    genres
+    from ods.ods_grouplens_movies m
+    ) a
+JOIN mysql.help_topic b ON b.help_topic_id <
+(length(a.genres) - length( replace(a.genres, '|', '')  ) + 1)
+
+```
+
+```sql
+-- 13894 size. 
+create table dwd.dwd_grouplens_genome_scores as
+select
+    r.movieId,r.tagId,o.max_relevance
+from ods.ods_grouplens_genome_scores r
+inner join
+(
+    select movieId,max(r.relevance) as max_relevance
+from  ods.ods_grouplens_genome_scores r
+group by r.movieId
+) o on r.movieId = o.movieId and r.relevance = o.max_relevance
+
+```
+## 4. MySQL-Based Data Analysis 
+
+### 
 ## 5. NetworkX-Based User-Movie Relationship Network Analysis  
 
 ### References  
