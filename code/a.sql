@@ -1,17 +1,15 @@
-# 用户评分表
-select * from ods.ods_grouplens_ratings limit 3;
-# Tag 评分
-select * from ods.ods_grouplens_genome_scores limit 3;
+#
+select m.year,t.tag,a.cleaned_title,a.avg_rating,a.comment_cnt,a.Id from dwd.tmp_movie_avg_rate_above_1000 a
+    left join dwd.tags t on a.tagId = t.tagId
+      left join dwd.movies m on a.cleaned_title = m.cleaned_title
+   where a.comment_cnt > 1 and a.avg_rating< 2
+order by avg_rating asc
+;
 
-# tag
-select count(1) from ods.ods_grouplens_genome_tags limit 3;
+select b.ID,
+       count(1) as number_of_movies,avg(avg_rating) as rating_avg,sum(a.comment_cnt) as comment_count
+from dwd.tmp_movie_avg_rate_above_1000 a
 
-select *
-from ods.ods_grouplens_movies;
-
-
-select count(1) from ods.ods_grouplens_movies;
-
-
-select * from ods.ods_grouplens_movies m where m.title like '%Lebowski%'
-select * from ods.ods_grouplens_tags t where t.movieId = '1732'
+left join dwd.movies_genres b on a.movieId = b.movieId
+group by b.ID
+order by rating_avg desc
