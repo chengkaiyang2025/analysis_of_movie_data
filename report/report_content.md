@@ -54,8 +54,9 @@ In enterprise-level data warehouses or data platforms, data collection is signif
 
 
 ### Data Preprocessing and Cleaning  
-
-We can clean the data using the following SQL queries:
+In this step, we mainly focus on data cleaning
+In the `ods_grouplens_movies` table, the release year of the movies is included in the title field. We need to extract the year into a separate column to facilitate subsequent queries and analysis. Note that some movie titles contain the year, while others do not. We need to handle these cases separately.
+The following is the SQL code: 
 ```sql
 
 create table dwd.movies as
@@ -73,7 +74,7 @@ select
 from ods.ods_grouplens_movies m
 ```
 
-
+In the `ods_grouplens_movies` table, the `genres` field is separated by the "|" character. A single movie may have multiple genre types. To better analyze the data from the genre dimension in the future, we need to split the data in this column by the "|" string and then expand the data into multiple rows. 
 ```sql
 
 
@@ -91,10 +92,10 @@ JOIN mysql.help_topic b ON b.help_topic_id <
 (length(a.genres) - length( replace(a.genres, '|', '')  ) + 1)
 
 ```
-
+Then, we process the `ods.ods_grouplens_genome_scores` table. The problem with this table is that it has a large amount of data, with 15,584,448 rows. In fact, only 13,816 movies have tags, and on average, each movie has 1,128 tags. When conducting analysis, SQL joins are time - consuming due to the large amount of data. We only select the tags with the maximum relevance for each movie. 
 ```sql
 -- 13894 size. 
-create table dwd.dwd_grouplens_genome_scores as
+create table dwd.movie_max_tags as
 select
     r.movieId,r.tagId,o.max_relevance
 from ods.ods_grouplens_genome_scores r
@@ -106,9 +107,160 @@ group by r.movieId
 ) o on r.movieId = o.movieId and r.relevance = o.max_relevance
 
 ```
+```sql
+
+
+create table dwd.user_tag_movie as
+SELECT
+     r.*,
+     DATE_FORMAT(FROM_UNIXTIME(timestamp ), '%Y-%m-%d %H:%i:%s') as comment_time
+from ods.ods_grouplens_tags r;
+
+create table dwd.user_rate_movie
+select
+    r.*,
+    DATE_FORMAT(FROM_UNIXTIME(timestamp ), '%Y-%m-%d %H:%i:%s') as comment_time
+
+from ods.ods_grouplens_ratings r;
+
+
+create table dwd.tags as     
+select * from ods.ods_grouplens_genome_tags;
+
+
+```
+
 ## 4. MySQL-Based Data Analysis 
 
 ### 
+The classifications of movies in the past five years are as follows.
+```sql
+
+select
+    g.Id,count(1)
+from dwd.movies m
+left join dwd.movies_genres g on m.movieId = g.movieId
+where m.year > 2015
+group by g.ID
+
+having count(1) > 1000
+order by count(1) desc;
+```
+
+Thriller,3031
+Drama,2646
+Comedy,1283
+Romance,1246
+Documentary,1080
+
+Due to the large number of comments, select movies with more than 1000 reviewers.
+```sql
+
+create table dwd.tmp_movie_avg_rate
+select u.movieId,count(1) as comment_cnt,avg(u.rating) from dwd.user_rate_movie u
+group by u.movieId;
+
+create table dwd.tmp_movie_avg_rate_above_1000 as
+select distinct t.movieId,t.avg_rating,t.comment_cnt,
+       m.cleaned_title,m.year,g.ID,mt.tagId,mt.max_relevance
+from dwd.tmp_movie_avg_rate t
+left join dwd.movies m on t.movieId = m.movieId
+left join dwd.movies_genres g on t.movieId = g.movieId
+left join dwd.movie_max_tags mt on t.movieId = mt.movieId
+where t.comment_cnt > 1000
+order by t.avg_rating desc
+;
+```
+
+The movie with the highest user rating:
+```sql
+
+select t.tag,a.cleaned_title,a.avg_rating,a.comment_cnt,a.Id from dwd.tmp_movie_avg_rate_above_1000 a
+         left join dwd.tags t on a.tagId = t.tagId
+order by avg_rating desc;
+```
+![](./pic/sql_2.png)
+
+The movies with the highest user ratings:
+```sql
+select t.tag,a.cleaned_title,a.avg_rating,a.comment_cnt,a.Id from dwd.tmp_movie_avg_rate_above_1000 a
+         left join dwd.tags t on a.tagId = t.tagId
+order by comment_cnt desc;
+```
+![](./pic/sql_3.png)
+
+The movie genre with the highest user ratings
+```sql
+select b.ID,
+       count(1) as number_of_movies,avg(avg_rating) as rating_avg,sum(a.comment_cnt) as comment_count
+from dwd.tmp_movie_avg_rate_above_1000 a
+
+left join dwd.movies_genres b on a.movieId = b.movieId
+group by b.ID
+order by rating_avg desc
+```
+![](./pic/sql_4.png)
+###
+Movie：Big Lebowski, The
+```sql
+
+create table dwd.tmp_user_rating_analysis_big_lebowski
+    select
+    m.cleaned_title,
+    m.year,
+    u.userId,
+    u.rating,
+    u.comment_time
+from dwd.movies m
+inner join dwd.user_rate_movie u
+on m.movieId = u.movieId
+where m.cleaned_title = 'Big Lebowski, The'
+;
+
+create table dwd.tmp_user_taging_analysis_big_lebowski
+
+select
+    m.cleaned_title,
+    m.year,
+    u.userId,
+    u.tag,
+    u.comment_time
+from dwd.movies m
+inner join dwd.user_tag_movie u
+on m.movieId = u.movieId
+where m.cleaned_title = 'Big Lebowski, The'
+
+
+
+
+```
+
+```sql
+-- r1
+SELECT
+    SUBSTRING(comment_time, 1, 4) AS year,
+    COUNT(*) AS comment_count,
+    -- 计算评分的平均值，先将rating转换为数值类型再计算
+    AVG(
+             rating + 0
+        ) AS average_rating
+FROM
+    dwd.tmp_user_rating_analysis_big_lebowski
+GROUP BY
+    -- 按年份分组
+    SUBSTRING(comment_time, 1, 4);
+```
+The graph of r1 is shown below. We can observe that after the movie was released in 1998, the number of comments surged between 2004 and 2006, as well as between 2015 and 2018.
+![r_1](./pic/r_1.png)
+From the graph of r2, we can see that when the movie was released in 1998, its rating was around 3.5. The movie became popular again in 2002. Between 2002 and 2005, the movie's score started to reach 4, and it peaked in 2005.
+![](./pic/r_2.png)
+
+According to Wikipedia, in 2002, the movie experienced a mysterious resurgence in popularity. Many enthusiastic fans promoted the movie everywhere, just like the protagonist in the movie.
+It is worth noting that the movie studio released a "Collector's Edition" DVD in 2005 and a 4K Ultra HD Blu - ray version of the film in 2018. The reason might be that they noticed this phenomenon. 
+
+
+
+
 ## 5. NetworkX-Based User-Movie Relationship Network Analysis  
 
 ### References  
